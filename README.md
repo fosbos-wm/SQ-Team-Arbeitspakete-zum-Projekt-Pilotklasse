@@ -2,7 +2,7 @@
 
 GitHub-Pages-Web-App für die Arbeitspakete des SQ-Teams, gemeinsam bearbeitbar über Firebase.
 
-**Enthalten:** `index.html`, `styles.css`, `app.js`, `firestore.rules`, `logo.jpg`, `README.md`
+**Enthalten:** `index.html`, `styles.css`, `app.js`, `firestore.rules`, `manifest.json`, `sw.js`, `logo.jpg`, `icon-192.png`, `icon-512.png`, `icon-192-maskable.png`, `icon-512-maskable.png`, `favicon.png`, `README.md`
 
 ## Layout
 - Desktop: 6 Karten nebeneinander
@@ -30,6 +30,13 @@ GitHub-Pages-Web-App für die Arbeitspakete des SQ-Teams, gemeinsam bearbeitbar 
 
 ## Zugriffsschutz
 Die App fragt beim Start eine Team-PIN ab (clientseitig geprüft) und meldet sich danach anonym bei Firebase an. Die Firestore-Regeln lassen Lesen/Schreiben nur für angemeldete Nutzer zu. Das schützt vor gelegentlichen Besuchern, ist aber keine harte Sicherheitsgrenze gegenüber technisch versierten Personen. Für echte Einzel-Logins pro Lehrkraft wäre ein vollständiges Firebase-Login (wie in der CampusKlasse-App) nötig.
+
+## Als Desktop-App installieren
+Die App ist als Progressive Web App (PWA) installierbar:
+- Beim Öffnen der Seite (über GitHub Pages, nicht lokal per Doppelklick – PWA-Installation braucht eine echte HTTPS-Adresse) erscheint in der Kopfleiste der Button **„⤓ App installieren“**, sobald der Browser (Chrome/Edge) die Installation anbietet.
+- Alternativ zeigt Chrome/Edge auch ein Installations-Symbol direkt in der Adressleiste.
+- Nach der Installation läuft die App wie eine eigenständige Desktop-App in einem eigenen Fenster ohne Adressleiste, mit eigenem Icon im Startmenü/Dock.
+- Safari (macOS/iOS) kennt diesen Button nicht – dort geht es über „Teilen“ → „Zum Dock hinzufügen“ bzw. „Zum Home-Bildschirm“.
 
 ## GitHub Pages
 Dateien direkt ins Repository-Hauptverzeichnis hochladen → Settings → Pages → Deploy from a branch → `main` + `/ (root)` → Save.

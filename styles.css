@@ -12,6 +12,7 @@ h1{font-size:28px;margin:3px 0;color:var(--blue-dark)}
 .btn,#helpBtn{border:1px solid;border-radius:7px;padding:10px 15px;font-weight:700;background:#fff;cursor:pointer;transition:transform .15s, box-shadow .15s}
 .btn.save{border-color:#1b9340;color:#177a35}
 .pdf{border-color:#1764d2;color:#1559ba}
+.install{border-color:#0c4d83;color:#0c4d83;background:#eaf4fb}
 .btn.save.just-saved{background:#1b9340;color:#fff;transform:scale(1.05);box-shadow:0 0 0 4px rgba(27,147,64,.18)}
 
 main{max-width:1540px;margin:auto;padding:25px 22px 70px}

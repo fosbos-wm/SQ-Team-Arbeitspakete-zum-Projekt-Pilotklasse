@@ -329,3 +329,33 @@ saveBtn.onclick = async () => {
 pdfBtn.onclick = () => window.print();
 helpBtn.onclick = () => helpModal.classList.remove("hidden");
 closeHelp.onclick = () => helpModal.classList.add("hidden");
+
+// ---------- Installierbar als Desktop-/Startbildschirm-App (PWA) ----------
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(err => console.error("Service Worker:", err));
+  });
+}
+
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  installBtn.classList.remove("hidden");
+});
+
+installBtn.onclick = async () => {
+  if (!deferredInstallPrompt) return;
+  installBtn.disabled = true;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  installBtn.classList.add("hidden");
+  installBtn.disabled = false;
+};
+
+window.addEventListener("appinstalled", () => {
+  installBtn.classList.add("hidden");
+  flash("App wurde installiert.");
+});
+

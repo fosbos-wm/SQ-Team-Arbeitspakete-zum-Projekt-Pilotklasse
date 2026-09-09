@@ -1,0 +1,17 @@
+{
+  "name": "SQ-Team-Projekt 26/27: Pilotklasse – Arbeitspakete",
+  "short_name": "Arbeitspakete",
+  "description": "Arbeitspakete des Schulqualitätsteams gemeinsam planen, verfolgen und weiterentwickeln.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fa",
+  "theme_color": "#1998d1",
+  "orientation": "any",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
