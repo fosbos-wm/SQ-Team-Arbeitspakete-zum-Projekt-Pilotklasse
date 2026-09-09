@@ -7,16 +7,16 @@ import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot
 // (Firebase-Konsole → Projekteinstellungen → "Web-App hinzufügen")
 // =====================================================================
 const firebaseConfig = {
-  apiKey: "DEIN_API_KEY",
-  authDomain: "DEIN_PROJEKT.firebaseapp.com",
-  projectId: "DEIN_PROJEKT",
-  storageBucket: "DEIN_PROJEKT.appspot.com",
-  messagingSenderId: "DEINE_SENDER_ID",
-  appId: "DEINE_APP_ID"
+  apiKey: "AIzaSyA8lCqdKK8ls_JnRgi6iRYPJwxl6Y1XwMY",
+  authDomain: "arbeitspakete-sq.firebaseapp.com",
+  projectId: "arbeitspakete-sq",
+  storageBucket: "arbeitspakete-sq.firebasestorage.app",
+  messagingSenderId: "1020946455130",
+  appId: "1:1020946455130:web:9921cadfbf37e702be5663"
 };
 
-// TODO: eigene Team-PIN festlegen (beliebige Zeichen/Ziffern)
-const TEAM_PIN = "1234";
+// Team-PIN
+const TEAM_PIN = "2345";
 const PIN_STORAGE_KEY = "sq-pilotklasse-pin-ok";
 const COLLECTION = "arbeitspakete";
 // =====================================================================
