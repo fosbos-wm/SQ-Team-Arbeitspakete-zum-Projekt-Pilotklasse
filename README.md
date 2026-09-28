@@ -14,6 +14,7 @@ GitHub-Pages-Web-App für die Arbeitspakete des SQ-Teams, gemeinsam bearbeitbar 
 - Arbeitspakete ansehen (Lesemodus) und über „Bearbeiten“ ändern
 - Neue Arbeitspakete über die „+ Neues Arbeitspaket“-Kachel anlegen
 - Arbeitspakete löschen
+- Reihenfolge ändern: Pfeile ‹ › in der Karte oder Drag & Drop (Maus); die Nummerierung 01, 02, 03 … wird automatisch angepasst
 - Änderungen werden über eine gemeinsame Firebase-Datenbank live mit allen Nutzern synchronisiert
 
 ## Ampel

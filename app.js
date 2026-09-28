@@ -44,6 +44,8 @@ let data = [];               // aktuell angezeigte Arbeitspakete (aus Firestore 
 let editing = new Set();     // ids (Firestore-Doc-ID oder "tmp-...") die gerade bearbeitet werden
 let tempCards = new Map();   // lokal neue, noch nicht in Firestore gespeicherte Karten: id -> Objekt
 let seeded = false;          // verhindert doppeltes Anlegen der Default-Pakete
+let drafts = new Map();      // ungespeicherte Eingaben in Karten im Bearbeitungsmodus: id -> Felder
+let dragId = null;           // Karte, die gerade per Drag & Drop verschoben wird
 
 // ---------- PIN-Gate ----------
 function unlockGate() {
@@ -127,14 +129,38 @@ function nextOrder() {
   return data.reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
 }
 
-function accentFor(p) {
-  return palette[((p.order || 1) - 1 + palette.length) % palette.length];
+// Farbe und Nummer richten sich nach der Position in der Liste (nicht nach dem
+// gespeicherten order-Wert) – so bleibt die Nummerierung 01, 02, 03 … immer lückenlos.
+function accentFor(idx) {
+  return palette[(idx + palette.length) % palette.length];
+}
+
+function numLabel(idx) {
+  return String(idx + 1).padStart(2, "0");
+}
+
+function persistedList() {
+  return data.filter(p => !tempCards.has(p.id));
+}
+
+function captureDrafts() {
+  document.querySelectorAll(".card.editing").forEach(card => {
+    const id = card.dataset.id;
+    if (!editing.has(id)) return;
+    const d = {};
+    card.querySelectorAll("[data-field]").forEach(e => d[e.dataset.field] = e.value);
+    drafts.set(id, d);
+  });
+}
+
+function dropDraft(id) {
+  drafts.delete(id);
 }
 
 // ---------- Rendering ----------
-function cardEdit(p, accent) {
+function cardEdit(p, accent, idx) {
   return `
-    <div class="card-head"><div class="card-number">${String(p.order ?? "").padStart(2, "0")}</div>
+    <div class="card-head"><div class="card-number">${numLabel(idx)}</div>
       <input class="card-title" data-field="title" value="${esc(p.title)}" placeholder="Titel des Arbeitspakets"></div>
     <div class="card-body">
       <div class="field"><label>Verantwortliche</label><input data-field="responsible" value="${esc(p.responsible)}" placeholder="Name(n)"></div>
@@ -153,10 +179,18 @@ function cardEdit(p, accent) {
     </div>`;
 }
 
-function cardView(p, accent) {
+function moveControls(p, idx, lastIdx) {
+  if (tempCards.has(p.id)) return "";
+  return `<div class="move-btns">
+    <button type="button" class="move-btn" data-move="${p.id}" data-dir="-1" title="Nach vorne verschieben" aria-label="Nach vorne verschieben" ${idx === 0 ? "disabled" : ""}>‹</button>
+    <button type="button" class="move-btn" data-move="${p.id}" data-dir="1" title="Nach hinten verschieben" aria-label="Nach hinten verschieben" ${idx >= lastIdx ? "disabled" : ""}>›</button>
+  </div>`;
+}
+
+function cardView(p, accent, idx, lastIdx) {
   const s = statuses[p.status];
   return `
-    <div class="card-head"><div class="card-number">${String(p.order ?? "").padStart(2, "0")}</div>
+    <div class="card-head"><div class="card-top"><div class="card-number">${numLabel(idx)}</div>${moveControls(p, idx, lastIdx)}</div>
       <h3 class="card-title-view">${esc(p.title) || "Ohne Titel"}</h3></div>
     <div class="card-body">
       <div class="field view"><label>Verantwortliche</label><div class="value">${esc(p.responsible) || "–"}</div></div>
@@ -174,11 +208,16 @@ function cardView(p, accent) {
 }
 
 function render() {
+  captureDrafts(); // ungespeicherte Eingaben anderer geöffneter Karten nicht verlieren
   updateCount();
-  const cards = data.map(p => {
-    const accent = accentFor(p);
-    const inner = editing.has(p.id) ? cardEdit(p, accent) : cardView(p, accent);
-    return `<article class="card${editing.has(p.id) ? " editing" : ""}" data-id="${p.id}" style="--accent:${accent}">${inner}</article>`;
+  const lastIdx = persistedList().length - 1;
+  const cards = data.map((p, idx) => {
+    const accent = accentFor(idx);
+    const isEditing = editing.has(p.id);
+    const shown = isEditing && drafts.has(p.id) ? { ...p, ...drafts.get(p.id) } : p;
+    const inner = isEditing ? cardEdit(shown, accent, idx) : cardView(p, accent, idx, lastIdx);
+    const draggable = !isEditing && !tempCards.has(p.id) ? ' draggable="true"' : "";
+    return `<article class="card${isEditing ? " editing" : ""}" data-id="${p.id}"${draggable} style="--accent:${accent}">${inner}</article>`;
   }).join("");
   const addTile = `<button id="addCard" class="card add-card" type="button"><span class="plus">+</span>Neues Arbeitspaket</button>`;
   board.innerHTML = cards + addTile;
@@ -213,6 +252,7 @@ function bind() {
       data = data.filter(x => x.id !== id);
     }
     editing.delete(id);
+    dropDraft(id);
     render();
   });
 
@@ -223,6 +263,7 @@ function bind() {
     readFields(card, p);
     try {
       if (tempCards.has(id)) {
+        p.order = persistedList().length + 1; // ans Ende der bestehenden Reihenfolge
         const ref = doc(collection(db, COLLECTION));
         await setDoc(ref, fieldsOf(p));
         tempCards.delete(id);
@@ -230,6 +271,7 @@ function bind() {
         await updateDoc(doc(db, COLLECTION, id), fieldsOf(p));
       }
       editing.delete(id);
+      dropDraft(id);
       markSaved(card);
       flash("Arbeitspaket gespeichert.");
     } catch (err) {
@@ -244,6 +286,7 @@ function bind() {
     if (tempCards.has(id)) {
       tempCards.delete(id);
       editing.delete(id);
+      dropDraft(id);
       data = data.filter(x => x.id !== id);
       render();
       return;
@@ -252,6 +295,7 @@ function bind() {
     try {
       await deleteDoc(doc(db, COLLECTION, id));
       editing.delete(id);
+      dropDraft(id);
       flash("Arbeitspaket gelöscht.");
     } catch (err) {
       flash("Fehler beim Löschen.");
@@ -263,6 +307,48 @@ function bind() {
     e.closest(".status-wrap").querySelector(".status-dot").style.background = statuses[e.value].color;
   });
 
+  // Verschieben per Pfeil-Buttons (auch am Handy/Tablet)
+  document.querySelectorAll("[data-move]").forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
+    const id = b.dataset.move;
+    const idx = persistedList().findIndex(x => x.id === id);
+    moveCard(id, idx + Number(b.dataset.dir));
+  });
+
+  // Verschieben per Drag & Drop (Maus): Karte auf eine andere Karte ziehen
+  document.querySelectorAll('.card[draggable="true"]').forEach(c => {
+    c.ondragstart = (e) => {
+      dragId = c.dataset.id;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", dragId);
+      c.classList.add("dragging");
+    };
+    c.ondragend = () => {
+      dragId = null;
+      document.querySelectorAll(".dragging,.drop-target").forEach(x => x.classList.remove("dragging", "drop-target"));
+    };
+  });
+  document.querySelectorAll(".card[data-id]").forEach(c => {
+    const targetOk = () => dragId && dragId !== c.dataset.id && !tempCards.has(c.dataset.id);
+    c.ondragover = (e) => {
+      if (!targetOk()) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      c.classList.add("drop-target");
+    };
+    c.ondragleave = (e) => {
+      if (!c.contains(e.relatedTarget)) c.classList.remove("drop-target");
+    };
+    c.ondrop = (e) => {
+      if (!targetOk()) return;
+      e.preventDefault();
+      const toIdx = persistedList().findIndex(x => x.id === c.dataset.id);
+      const id = dragId;
+      dragId = null;
+      moveCard(id, toIdx);
+    };
+  });
+
   addCard.onclick = () => {
     const id = "tmp-" + Date.now();
     const p = { id, ...emptyPackage(nextOrder()) };
@@ -272,6 +358,35 @@ function bind() {
     render();
     focusCard(id);
   };
+}
+
+// Karte an eine neue Position schieben; die Positionen 1…n werden neu vergeben
+// und gemeinsam (atomar) in Firestore gespeichert.
+async function moveCard(id, toIdx) {
+  const list = persistedList();
+  const from = list.findIndex(p => p.id === id);
+  if (from < 0 || toIdx < 0 || toIdx >= list.length || from === toIdx) return;
+
+  captureDrafts();
+  const [item] = list.splice(from, 1);
+  list.splice(toIdx, 0, item);
+
+  const batch = writeBatch(db);
+  list.forEach((p, i) => {
+    if (p.order !== i + 1) batch.update(doc(db, COLLECTION, p.id), { order: i + 1 });
+    p.order = i + 1;
+  });
+  data = [...list, ...tempCards.values()]; // sofort anzeigen, Firestore zieht nach
+  render();
+  focusCard(id);
+
+  try {
+    await batch.commit();
+    saveState.textContent = "Reihenfolge gespeichert · " + new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  } catch (err) {
+    flash("Fehler beim Verschieben.");
+    console.error(err);
+  }
 }
 
 function focusCard(id) {
@@ -308,6 +423,7 @@ saveBtn.onclick = async () => {
       if (!p) continue;
       readFields(card, p);
       if (tempCards.has(id)) {
+        p.order = persistedList().length + 1; // ans Ende der bestehenden Reihenfolge
         const ref = doc(collection(db, COLLECTION));
         await setDoc(ref, fieldsOf(p));
         tempCards.delete(id);
@@ -315,6 +431,7 @@ saveBtn.onclick = async () => {
         await updateDoc(doc(db, COLLECTION, id), fieldsOf(p));
       }
       editing.delete(id);
+      dropDraft(id);
     }
     saveState.textContent = "Gespeichert · " + new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
     saveBtn.classList.add("just-saved");
