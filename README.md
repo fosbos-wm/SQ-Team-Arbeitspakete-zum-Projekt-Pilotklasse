@@ -15,6 +15,7 @@ GitHub-Pages-Web-App für die Arbeitspakete des SQ-Teams, gemeinsam bearbeitbar 
 - Neue Arbeitspakete über die „+ Neues Arbeitspaket“-Kachel anlegen
 - Arbeitspakete löschen
 - Reihenfolge ändern: Pfeile ‹ › in der Karte oder Drag & Drop (Maus); die Nummerierung 01, 02, 03 … wird automatisch angepasst
+- **Ergebnis eintragen und Fragestellung abschließen:** In „Bearbeiten“ steht unten das Feld *Ergebnis (Lösung / Vereinbarung)* mit dem Haken *Fragestellung abgeschlossen*. Abgeschlossene Karten zeigen „✓ Abgeschlossen“ statt der Ampel, das Ergebnis ist hervorgehoben; oben in der Übersicht steht „davon x abgeschlossen“. Den Haken wieder zu entfernen öffnet die Fragestellung erneut (die zuvor gewählte Ampel bleibt erhalten). Neue Firestore-Felder: `result` (Text) und `done` (true/false); ältere Karten ohne diese Felder funktionieren unverändert.
 - Änderungen werden über eine gemeinsame Firebase-Datenbank live mit allen Nutzern synchronisiert
 
 ## Ampel

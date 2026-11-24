@@ -36,7 +36,7 @@ const defaultTitles = ["Projektplanung","Bedarfsanalyse","Konzeptentwicklung","R
 const palette = ["#D97B3F","#C0562E","#2FA6A6","#2E8FBF","#3D6FD9","#4F5FCB","#7A5CC9","#9A4FC0","#C247A0","#C34C74","#8A5A3C","#5C6B7A"];
 
 function emptyPackage(order, title) {
-  return { order, title: title || "Neues Arbeitspaket", responsible: "", goal: "", task: "", deadline: "", status: "aufkurs", next: "" };
+  return { order, title: title || "Neues Arbeitspaket", responsible: "", goal: "", task: "", deadline: "", status: "aufkurs", next: "", result: "", done: false };
 }
 
 // ---------- Zustand ----------
@@ -148,13 +148,18 @@ function captureDrafts() {
     const id = card.dataset.id;
     if (!editing.has(id)) return;
     const d = {};
-    card.querySelectorAll("[data-field]").forEach(e => d[e.dataset.field] = e.value);
+    card.querySelectorAll("[data-field]").forEach(e => d[e.dataset.field] = fieldValue(e));
     drafts.set(id, d);
   });
 }
 
 function dropDraft(id) {
   drafts.delete(id);
+}
+
+// Checkbox (Fragestellung abgeschlossen) liefert true/false, alle anderen Felder Text
+function fieldValue(e) {
+  return e.type === "checkbox" ? e.checked : e.value;
 }
 
 // ---------- Rendering ----------
@@ -167,9 +172,13 @@ function cardEdit(p, accent, idx) {
       <div class="field"><label>Ziel</label><textarea data-field="goal" placeholder="Ziel eingeben...">${esc(p.goal)}</textarea></div>
       <div class="field"><label>Aufgabe</label><textarea data-field="task" placeholder="Aufgabe eingeben...">${esc(p.task)}</textarea></div>
       <div class="field"><label>Deadline</label><input type="date" data-field="deadline" value="${esc(p.deadline)}"></div>
-      <div class="field"><label>Status</label><div class="status-wrap"><i class="status-dot" style="background:${statuses[p.status].color}"></i>
-        <select class="status-select" data-field="status">${statusOptions(p.status)}</select></div></div>
+      <div class="field"><label>Status</label><div class="status-wrap${p.done ? " off" : ""}"><i class="status-dot" style="background:${statuses[p.status].color}"></i>
+        <select class="status-select" data-field="status" ${p.done ? "disabled" : ""}>${statusOptions(p.status)}</select></div></div>
       <div class="field"><label>Nächste Schritte</label><textarea data-field="next" placeholder="Nächste Schritte...">${esc(p.next)}</textarea></div>
+      <div class="field result-field"><label>Ergebnis (Lösung / Vereinbarung)</label>
+        <textarea data-field="result" placeholder="Wie wurde das Problem gelöst bzw. was wurde vereinbart?">${esc(p.result)}</textarea>
+        <label class="done-check"><input type="checkbox" data-field="done" ${p.done ? "checked" : ""}> Fragestellung abgeschlossen</label>
+        <small class="hint">Mit Haken zeigt die Karte „✓ Abgeschlossen“ statt der Ampel.</small></div>
       <div class="card-footer">
         <button class="mini-btn danger" data-delete="${p.id}">Löschen</button>
         <span class="spacer"></span>
@@ -191,14 +200,18 @@ function cardView(p, accent, idx, lastIdx) {
   const s = statuses[p.status];
   return `
     <div class="card-head"><div class="card-top"><div class="card-number">${numLabel(idx)}</div>${moveControls(p, idx, lastIdx)}</div>
-      <h3 class="card-title-view">${esc(p.title) || "Ohne Titel"}</h3></div>
+      <h3 class="card-title-view">${esc(p.title) || "Ohne Titel"}</h3>
+      ${p.done ? '<div class="done-pill">✓ Abgeschlossen</div>' : ""}</div>
     <div class="card-body">
       <div class="field view"><label>Verantwortliche</label><div class="value">${esc(p.responsible) || "–"}</div></div>
       <div class="field view"><label>Ziel</label><div class="value">${esc(p.goal) || "–"}</div></div>
       <div class="field view"><label>Aufgabe</label><div class="value">${esc(p.task) || "–"}</div></div>
       <div class="field view"><label>Deadline</label><div class="value">${fmtDate(p.deadline)}</div></div>
-      <div class="field view"><label>Status</label><div class="status-badge"><i class="status-dot" style="background:${s.color}"></i>${s.label}</div></div>
+      <div class="field view"><label>Status</label>${p.done
+        ? '<div class="status-badge done-badge"><i class="done-dot">✓</i>Abgeschlossen</div>'
+        : `<div class="status-badge"><i class="status-dot" style="background:${s.color}"></i>${s.label}</div>`}</div>
       <div class="field view"><label>Nächste Schritte</label><div class="value">${esc(p.next) || "–"}</div></div>
+      <div class="field view"><label>Ergebnis</label><div class="value${p.result ? " result-box" : ""}">${esc(p.result) || "–"}</div></div>
       <div class="card-footer">
         <button class="mini-btn danger" data-delete="${p.id}">Löschen</button>
         <span class="spacer"></span>
@@ -217,7 +230,7 @@ function render() {
     const shown = isEditing && drafts.has(p.id) ? { ...p, ...drafts.get(p.id) } : p;
     const inner = isEditing ? cardEdit(shown, accent, idx) : cardView(p, accent, idx, lastIdx);
     const draggable = !isEditing && !tempCards.has(p.id) ? ' draggable="true"' : "";
-    return `<article class="card${isEditing ? " editing" : ""}" data-id="${p.id}"${draggable} style="--accent:${accent}">${inner}</article>`;
+    return `<article class="card${isEditing ? " editing" : ""}${shown.done ? " done" : ""}" data-id="${p.id}"${draggable} style="--accent:${accent}">${inner}</article>`;
   }).join("");
   const addTile = `<button id="addCard" class="card add-card" type="button"><span class="plus">+</span>Neues Arbeitspaket</button>`;
   board.innerHTML = cards + addTile;
@@ -226,10 +239,12 @@ function render() {
 
 function updateCount() {
   pkgCount.textContent = data.length;
+  const done = data.filter(p => p.done).length;
+  doneInfo.textContent = done ? ` – davon ${done} abgeschlossen` : "";
 }
 
 function readFields(card, p) {
-  card.querySelectorAll("[data-field]").forEach(e => p[e.dataset.field] = e.value);
+  card.querySelectorAll("[data-field]").forEach(e => p[e.dataset.field] = fieldValue(e));
 }
 
 function fieldsOf(p) {
@@ -267,12 +282,14 @@ function bind() {
         const ref = doc(collection(db, COLLECTION));
         await setDoc(ref, fieldsOf(p));
         tempCards.delete(id);
+        data = data.filter(x => x.id !== id); // die gespeicherte Karte kommt per Live-Sync
       } else {
         await updateDoc(doc(db, COLLECTION, id), fieldsOf(p));
       }
       editing.delete(id);
       dropDraft(id);
-      markSaved(card);
+      render(); // zurück in die Ansicht – z. B. mit „✓ Abgeschlossen“ und Ergebnis
+      markSaved(document.querySelector(`.card[data-id="${id}"]`) || card);
       flash("Arbeitspaket gespeichert.");
     } catch (err) {
       flash("Fehler beim Speichern.");
@@ -305,6 +322,15 @@ function bind() {
 
   document.querySelectorAll('.card.editing [data-field="status"]').forEach(e => e.onchange = () => {
     e.closest(".status-wrap").querySelector(".status-dot").style.background = statuses[e.value].color;
+  });
+
+  // Haken „Fragestellung abgeschlossen“: Karte sofort markieren, Ampel-Auswahl sperren
+  document.querySelectorAll('.card.editing [data-field="done"]').forEach(e => e.onchange = () => {
+    const card = e.closest(".card");
+    card.classList.toggle("done", e.checked);
+    const sel = card.querySelector('[data-field="status"]');
+    sel.disabled = e.checked;
+    sel.closest(".status-wrap").classList.toggle("off", e.checked);
   });
 
   // Verschieben per Pfeil-Buttons (auch am Handy/Tablet)
@@ -427,12 +453,14 @@ saveBtn.onclick = async () => {
         const ref = doc(collection(db, COLLECTION));
         await setDoc(ref, fieldsOf(p));
         tempCards.delete(id);
+        data = data.filter(x => x.id !== id);
       } else {
         await updateDoc(doc(db, COLLECTION, id), fieldsOf(p));
       }
       editing.delete(id);
       dropDraft(id);
     }
+    render();
     saveState.textContent = "Gespeichert · " + new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
     saveBtn.classList.add("just-saved");
     setTimeout(() => saveBtn.classList.remove("just-saved"), 900);
